@@ -22,7 +22,7 @@ activity data (mocked for this project) and visualizes recovery insights through
 
 All components are designed to work together locally.
 
----
+----
 
 ## Repository Structure
 
