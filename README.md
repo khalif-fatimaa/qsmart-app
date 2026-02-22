@@ -1,15 +1,33 @@
-# 2025-Sep-QSmart
+# QSmart
 
-# QSmart – Developer Setup & Transition Guide
+## Overview
+QSmart is a full-stack recovery and monitoring platform designed to simulate sensor-driven health insights. The system collects posture, tension, and activity data (mocked) and visualizes it through web and mobile applications.
 
-This repository contains the complete QSmart system developed as part of the
-DMIT-2590 Capstone project.
+This project demonstrates end-to-end system design across backend APIs, web dashboards, and mobile applications.
 
-The purpose of this README is to act as a **developer setup and transition guide**.
-A new team member should be able to go from **zero → running the system locally**
-and contributing code using only this document.
+## Key Features
+- Full-stack architecture with API, web, and mobile integration  
+- Real-time data visualization and user insights  
+- Admin dashboard for monitoring and management  
+- Cross-platform mobile application for end users  
 
----
+## Tech Stack
+- Backend: C# / .NET 8  
+- Web: Blazor  
+- Mobile: Flutter (Dart)  
+- Database: SQL Server  
+- Tools: Visual Studio, Android Studio  
+
+## Architecture
+The system consists of three main components:
+- Backend API (.NET) – handles data processing and business logic  
+- Web Dashboard (Blazor) – admin/staff interface  
+- Mobile App (Flutter) – end-user interaction  
+
+All components communicate through the backend API.
+
+## Screenshots (optional)
+_Add screenshots here if available_
 
 ## System Overview
 
