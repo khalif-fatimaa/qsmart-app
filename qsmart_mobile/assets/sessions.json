@@ -1,0 +1,25 @@
+[
+  {
+    "session_id": "s_20250915_am",
+    "user_id": "u_123",
+    "started_at": "2025-09-15T15:50:00Z",
+    "notes": "Desk work calibration",
+    "region": "string - body region (e.g., neck, shoulder_left, shoulder_right, lower_back)",
+    "tension_score": "float 0-100 - higher means more tension",
+   "heart_rate_bpm": "float - beats per minute",
+  "posture_angle_deg": "float - degrees from neutral posture (positive = more forward flexion)",
+  "activity_label": "enum {low_tension, moderate_tension, high_tension} - coarse bucket for analytics"
+  },
+  {
+    "session_id": "s_20250915_pm",
+    "user_id": "u_456",
+    "started_at": "2025-09-15T20:00:00Z",
+    "notes": "Light activity",
+     "region": "string - body region (e.g., neck, shoulder_left, shoulder_right, lower_back)",
+    "tension_score": "float 0-100 - higher means more tension",
+   "heart_rate_bpm": "float - beats per minute",
+  "posture_angle_deg": "float - degrees from neutral posture (positive = more forward flexion)",
+  "activity_label": "enum {low_tension, moderate_tension, high_tension} - coarse bucket for analytics"
+  }
+]
+

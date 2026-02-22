@@ -1,0 +1,244 @@
+﻿:root {
+    --navy: #0C1445; /* Deep Navy Blue */
+    --royal: #1E2A78; /* Royal Blue (gradients/hover) */
+    --gold: #C9932C; /* Rich Gold (start) */
+    --gold2: #FFD26F; /* Bright Gold (end) */
+    --offwhite: #F2E6D0; /* Button text / light text */
+    --electric: #3E5CE6; /* Accents / outlines */
+}
+
+/* Global foundation */
+html, body {
+    height: 100%;
+    background: radial-gradient(1200px 800px at 20% 0%, var(--royal) 0%, var(--navy) 40%, var(--navy) 100%);
+    color: var(--offwhite);
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+}
+
+a {
+    color: var(--gold2);
+}
+
+    a:hover {
+        color: var(--gold);
+    }
+
+/* Layout shell */
+.qsmart-shell {
+    min-height: 100dvh;
+    display: grid;
+    grid-template-rows: auto 1fr;
+}
+
+/* Topbar */
+.qsmart-topbar {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .85rem 1.25rem;
+    background: linear-gradient(180deg, rgba(30,42,120,.25), rgba(12,20,69,.8));
+    border-bottom: 1px solid rgba(62,92,230,.35);
+    backdrop-filter: blur(6px);
+}
+
+.qsmart-logo {
+    height: 40px;
+    width: auto;
+    display: block;
+    filter: drop-shadow(0 2px 6px rgba(0,0,0,.5));
+}
+
+/* Gold gradient text utility */
+.grad-gold {
+    background-image: linear-gradient(90deg, var(--gold) 0%, var(--gold2) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+
+/* Page container */
+.qsmart-page {
+    padding: 1.25rem;
+}
+
+/* Card */
+.q-card {
+    background: linear-gradient(180deg, rgba(14,22,73,.85), rgba(8,14,52,.9));
+    border: 1px solid rgba(62,92,230,.35);
+    border-radius: 18px;
+    padding: 1rem 1.1rem;
+    box-shadow: 0 10px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.03);
+}
+
+/* Primary button */
+.q-btn {
+    appearance: none;
+    border: 1px solid var(--electric);
+    background-image: linear-gradient(90deg, var(--gold), var(--gold2));
+    color: var(--offwhite);
+    padding: .65rem 1rem;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: transform .08s ease, box-shadow .2s ease, filter .2s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+}
+
+    .q-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(62,92,230,.35);
+        filter: saturate(1.05);
+    }
+
+    .q-btn:active {
+        transform: translateY(0);
+    }
+
+.q-btn-danger {
+    background-image: none;
+    background-color: #b25050;
+    border-color: #b25050;
+    color: #ffdede;
+}
+
+    .q-btn-danger:hover {
+        filter: brightness(1.05);
+        box-shadow: 0 6px 20px rgba(178, 80, 80, 0.45);
+    }
+
+    .q-btn-danger:active {
+        transform: translateY(0);
+        box-shadow: 0 2px 10px rgba(0,0,0,.4);
+    }
+
+/* Accent outline (for inputs or focus rings) */
+.q-outline {
+    outline: 2px solid var(--electric);
+    outline-offset: 2px;
+}
+
+/* Subtle caption */
+.q-cap {
+    color: rgba(242,230,208,.8);
+    font-size: .9rem;
+}
+
+/* Simple grid */
+.q-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+/* Dark inputs that fit the theme */
+.q-input,
+.form-control,
+.form-select {
+    background: rgba(8,14,52,.9);
+    color: var(--offwhite);
+    border: 1px solid rgba(62,92,230,.35);
+}
+
+    .q-input::placeholder,
+    .form-control::placeholder {
+        color: rgba(242,230,208,.55);
+    }
+
+    .q-input:focus,
+    .form-control:focus,
+    .form-select:focus {
+        border-color: var(--electric);
+        box-shadow: 0 0 0 .2rem rgba(62,92,230,.25);
+    }
+
+/* If you still use Bootstrap .card anywhere, make it blend in */
+.card {
+    background: linear-gradient(180deg, rgba(14,22,73,.85), rgba(8,14,52,.9));
+    border: 1px solid rgba(62,92,230,.35);
+    color: var(--offwhite);
+}
+
+/* ===== LOGIN PAGE SPECIFIC STYLES (ADDED) ===== */
+
+.login-page-bg {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    gap: 1.5rem;
+    background-image: linear-gradient(to bottom right, rgba(4, 7, 25, 0.88), rgba(12, 20, 69, 0.9)), url("../images/chair-image.png");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    animation: chairDrift 18s ease-in-out infinite alternate;
+}
+
+    .login-page-bg:hover {
+        background-size: 106%;
+        animation-duration: 12s;
+    }
+
+.login-hero {
+    max-width: 520px;
+    padding: 1.5rem 1.75rem;
+    backdrop-filter: blur(6px);
+    background: rgba(8, 12, 32, 0.9);
+    border-radius: 18px;
+    box-shadow: 0 18px 45px rgba(0, 0, 0, 0.6);
+    text-align: center;
+    animation: loginHeroFloat 9s ease-in-out infinite;
+}
+
+.login-hero-title {
+    margin: .1rem 0 .15rem 0;
+    font-size: 1.95rem;
+    font-weight: 800;
+    letter-spacing: .03em;
+}
+
+.login-hero-sub {
+    opacity: 0.9;
+    margin-top: .25rem;
+}
+
+@keyframes loginHeroFloat {
+    0% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-6px);
+    }
+
+    100% {
+        transform: translateY(0);
+    }
+}
+
+@keyframes chairDrift {
+    0% {
+        background-position: center;
+    }
+
+    50% {
+        background-position: center top;
+    }
+
+    100% {
+        background-position: center bottom;
+    }
+}
+
+@media (max-width: 600px) {
+    .login-hero-title {
+        font-size: 1.6rem;
+    }
+
+    .login-hero {
+        padding: 1.1rem 1.3rem;
+    }
+}

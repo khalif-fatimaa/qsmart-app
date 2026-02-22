@@ -1,0 +1,29 @@
+name: qsmart_mobile
+description: QSmart demo app
+publish_to: "none"
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/users.json
+    - assets/sessions.json
+    - assets/readings.json
+    - assets/images/qsmart_logo.png
+    - assets/images/body_silhouette.png
+    - assets/images/frontbody.png
+    - assets/images/backbody.png

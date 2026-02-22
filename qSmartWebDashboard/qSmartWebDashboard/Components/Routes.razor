@@ -1,0 +1,20 @@
+﻿@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Routing
+
+<Router AppAssembly="@typeof(Program).Assembly" PreferExactMatches="true">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData"
+                   DefaultLayout="@typeof(qSmartWebDashboard.Components.Layout.MainLayout)" />
+    </Found>
+    <NotFound>
+        <RedirectToRoot />
+    </NotFound>
+</Router>
+
+@code {
+    public sealed class RedirectToRoot : ComponentBase
+    {
+        [Inject] NavigationManager Nav { get; set; } = default!;
+        protected override void OnInitialized() => Nav.NavigateTo("/");
+    }
+}

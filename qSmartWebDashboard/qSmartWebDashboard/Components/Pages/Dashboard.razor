@@ -1,0 +1,211 @@
+﻿@page "/dashboard"
+@rendermode InteractiveServer
+@using System.Linq
+@using qSmartWebDashboard.Models
+@using qSmartWebDashboard.ViewModels
+@inject NavigationManager Nav
+@inject qSmartWebDashboard.Services.AuthState Auth
+@inject qSmartWebDashboard.Data.ApiDataService ApiDataService
+
+<!-- PAGE HEADER / HERO -->
+<section class="q-card" style="margin:1rem 1rem 0 1rem; padding:1.25rem;">
+    <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+        <img src="images/qsmart-logo.png" alt="QSMART" style="height:48px; width:auto; filter:drop-shadow(0 3px 8px rgba(0,0,0,.5));" />
+        <div style="min-width:220px">
+            <h1 class="grad-gold" style="margin:.1rem 0 .15rem 0; font-size:1.85rem; font-weight:800; letter-spacing:.02em;">
+                QSMART Readings
+            </h1>
+            <div class="q-cap">Muscle Relief</div>
+        </div>
+
+        <!-- NAV: stay in same tab by using Nav.NavigateTo -->
+        <div style="margin-left:auto; display:flex; gap:.5rem; flex-wrap:wrap;">
+            <!--<button class="q-btn" @onclick="GoDashboard">Dashboard</button>-->
+            <button class="q-btn" @onclick="GoUsers">User Management</button>
+            <button class="q-btn" @onclick="Logout">Logout</button>
+        </div>
+    </div>
+</section>
+
+<!-- FILTERS -->
+<section class="q-card" style="margin:1rem; padding:1rem;">
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:end;">
+        <div style="min-width:240px;">
+            <label class="q-cap">Search user (name, email, id)</label>
+            <input class="form-control" placeholder="e.g. alex@clinic.com" @bind="userQuery" />
+        </div>
+        <div style="min-width:240px;">
+            <label class="q-cap">Search region / activity</label>
+            <input class="form-control" placeholder="e.g. lumbar, walking…" @bind="search" />
+        </div>
+        <div style="min-width:160px;">
+            <label class="q-cap">Rows</label>
+            <select class="form-select" @bind="rowsToShow">
+                <option value="50">Show 50</option>
+                <option value="100">Show 100</option>
+                <option value="250">Show 250</option>
+                <option value="500">Show 500</option>
+            </select>
+        </div>
+        <div style="display:flex; gap:.5rem;">
+            <button class="q-btn" @onclick="ClearFilters">Clear</button>
+        </div>
+    </div>
+</section>
+
+<!-- DATA STATES -->
+<section style="margin:0 1rem 1rem 1rem;">
+    @if (!_authHydrated)
+    {
+        <div class="q-card" style="padding:1rem;"><span class="q-cap">Initializing…</span></div>
+    }
+    else if (!_isAdmin)
+    {
+        <div class="q-card" style="padding:1rem;"><span class="q-cap">Redirecting…</span></div>
+    }
+    else if (!_ready)
+    {
+        <div class="q-card" style="padding:1rem;"><span class="q-cap">Loading…</span></div>
+    }
+    else
+    {
+        <div class="q-card" style="padding:0; overflow:hidden;">
+            <div class="table-responsive" style="max-height:70vh; overflow:auto;">
+                <table class="table table-hover table-sm align-middle mb-0" style="color:var(--offwhite);">
+                    <thead style="position: sticky; top: 0; z-index: 1; background: linear-gradient(180deg, rgba(62,92,230,.25), rgba(12,20,69,.9));">
+                        <tr>
+                            <th><button class="btn btn-link p-0 text-decoration-none grad-gold" @onclick="() => SortBy(nameof(Row.Timestamp))">Time</button></th>
+                            <th><button class="btn btn-link p-0 text-decoration-none grad-gold" @onclick="() => SortBy(nameof(Row.UserName))">User</button></th>
+                            <th><button class="btn btn-link p-0 text-decoration-none grad-gold" @onclick="() => SortBy(nameof(Row.Email))">Email</button></th>
+                            <th><button class="btn btn-link p-0 text-decoration-none grad-gold text-end">Actions</button></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in ViewRows())
+                        {
+                            <tr style="border-color: rgba(62,92,230,.25);">
+                                <td class="text-nowrap">@r.Timestamp.ToLocalTime()</td>
+                                <td>
+                                    <div class="fw-semibold grad-gold" style="letter-spacing:.01em;">@r.UserName</div>
+                                    <small class="text-muted"><code>@r.UserId</code></small>
+                                </td>
+                                <td>@r.Email</td>
+                                <td class="text-end">
+                                    <button class="btn btn-outline-primary btn-sm" @onclick="() => ViewMember(r.UserId)">View</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <div class="q-cap" style="padding:.6rem 1rem; border-top:1px solid rgba(62,92,230,.25);">
+                Rows: @ViewCount / @_users.Count
+            </div>
+        </div>
+    }
+</section>
+
+@code {
+    private bool _authHydrated;
+    private bool _isAdmin;
+    private bool _ready;
+    private List<UserViewModel> _users = new();
+    private string userQuery = "";
+    private string search = "";
+    private int rowsToShow = 100;
+    private string sortColumn = nameof(Row.Timestamp);
+    private bool sortAsc = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_authHydrated)
+        {
+            try
+            {
+                await Auth.InitializeAsync();
+                _authHydrated = true;
+                _isAdmin = Auth.IsAdmin;
+
+                if (!_isAdmin)
+                {
+                    Nav.NavigateTo("/");
+                    return;
+                }
+
+                _users = await ApiDataService.GetUsersAsync();
+                _ready = true;
+                StateHasChanged();
+            }
+            catch
+            {
+                return;
+            }
+        }
+    }
+
+    private IEnumerable<Row> ViewRows()
+    {
+
+        var uq = (userQuery ?? "").Trim().ToLowerInvariant();
+        var sq = (search ?? "").Trim().ToLowerInvariant();
+
+        var query = _users
+            .Where(u => string.IsNullOrEmpty(uq)
+                        || (u.FullName?.ToLowerInvariant().Contains(uq) ?? false)
+                        || (u.Email?.ToLowerInvariant().Contains(uq) ?? false)
+                        || (u.Id?.ToLowerInvariant().Contains(uq) ?? false))
+            .Select(u => new Row
+            {
+                UserId = u.Id,
+                UserName = u.FullName,
+                Email = u.Email,
+                Timestamp = u.CreatedAt?.DateTime ?? DateTime.UtcNow
+            });
+
+        query = sortColumn switch
+        {
+            nameof(Row.UserName) => sortAsc ? query.OrderBy(r => r.UserName) : query.OrderByDescending(r => r.UserName),
+            nameof(Row.Email) => sortAsc ? query.OrderBy(r => r.Email) : query.OrderByDescending(r => r.Email),
+            _ => sortAsc ? query.OrderBy(r => r.UserName) : query.OrderByDescending(r => r.UserName)
+        };
+
+        var result = query.Take(rowsToShow).ToList();
+        ViewCount = result.Count;
+        return result;
+    }
+
+    private void SortBy(string col)
+    {
+        if (sortColumn == col) sortAsc = !sortAsc; else { sortColumn = col; sortAsc = true; }
+    }
+
+    private void GoUsers() => Nav.NavigateTo("/usermanagement");
+
+    private void ViewMember(string userId)
+    {
+        Nav.NavigateTo($"/userprogress/{userId}");
+    }
+
+    private int ViewCount { get; set; }
+
+    private async Task Logout()
+    {
+        await Auth.SignOut();
+        Nav.NavigateTo("/");
+    }
+
+    private void ClearFilters()
+    {
+        userQuery = ""; search = "";
+        sortColumn = nameof(Row.Timestamp);
+        sortAsc = false;
+    }
+
+    private sealed class Row
+    {
+        public DateTime Timestamp { get; set; }
+        public string UserId { get; set; } = "";
+        public string UserName { get; set; } = "";
+        public string Email { get; set; } = "";
+    }
+}

@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "qSmartWebDashboard\\qSmartWebDashboard.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "..\\QSmart\\QSmartBackend\\QSmartBackend.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

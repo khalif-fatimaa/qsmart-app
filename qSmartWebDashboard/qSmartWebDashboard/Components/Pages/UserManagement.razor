@@ -1,0 +1,482 @@
+﻿@page "/UserManagement"
+@rendermode InteractiveServer
+@using System.Linq
+@using System.Text.Json
+@using qSmartWebDashboard.Models
+@using qSmartWebDashboard.ViewModels
+@inject NavigationManager Nav
+@inject qSmartWebDashboard.Services.AuthState Auth
+@inject qSmartWebDashboard.Data.ApiDataService ApiDataService
+
+<!-- PAGE HEADER -->
+<section class="q-card" style="margin:1rem; padding:1rem;">
+    <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+        <img src="images/qsmart-logo.png" alt="QSMART" style="height:40px; width:auto; filter:drop-shadow(0 3px 8px rgba(0,0,0,.5));" />
+        <div>
+            <h1 class="grad-gold" style="margin:.1rem 0 .15rem 0; font-size:1.6rem; font-weight:800; letter-spacing:.02em;">
+                User Management
+            </h1>
+            <div class="q-cap">Create, edit, and curate members for the dashboard.</div>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:.5rem; flex-wrap:wrap;">
+            <button class="q-btn" @onclick="BeginCreate">+ New Member</button>
+            <button class="q-btn" @onclick="Logout">Logout</button>
+        </div>
+    </div>
+</section>
+
+<!-- FILTERS -->
+<section class="q-card" style="margin:1rem; padding:1rem;">
+    <div style="display:flex; gap:.5rem; flex-wrap:wrap; align-items:end;">
+        <div style="min-width:260px;">
+            <label class="q-cap">Search (name, email, id)</label>
+            <input class="form-control q-input" placeholder="e.g. alex@clinic.com" @bind="search" @bind:event="oninput" />
+        </div>
+        <div style="min-width:160px;">
+            <label class="q-cap">Rows</label>
+            <select class="form-select q-input" @bind="rowsToShow">
+                <option value="50">Show 50</option>
+                <option value="100">Show 100</option>
+                <option value="250">Show 250</option>
+                <option value="500">Show 500</option>
+            </select>
+        </div>
+        <div style="display:flex; gap:.5rem;">
+            <button class="q-btn" @onclick="ClearFilters">Clear</button>
+            <button class="q-btn" @onclick="RefreshUsers">Refresh</button>
+        </div>
+    </div>
+</section>
+
+<!-- LOAD STATES -->
+<section style="margin:0 1rem 1rem 1rem;">
+    @if (!_authHydrated)
+    {
+        <div class="q-card" style="padding:1rem;"><span class="q-cap">Initializing…</span></div>
+    }
+    else if (!_isAdmin)
+    {
+        <div class="q-card" style="padding:1rem;"><span class="q-cap">Redirecting…</span></div>
+    }
+    else if (_isLoading)
+    {
+        <div class="q-card" style="padding:1rem;"><span class="q-cap">Loading users from backend…</span></div>
+    }
+    else
+    {
+        @if (showForm)
+        {
+            <div class="q-card" style="margin-bottom:1rem; padding:1rem;">
+                <h5 class="grad-gold" style="margin-top:0;">@((editing is null) ? "Create Member" : "Edit Member")</h5>
+                <EditForm Model="@form" OnValidSubmit="@Save">
+                    <DataAnnotationsValidator />
+                    <ValidationSummary />
+                    <div class="row g-3">
+                        <div class="col-md-5">
+                            <label class="q-cap">Full Name</label>
+                            <InputText class="form-control q-input" @bind-Value="form.FullName" />
+                        </div>
+                        <div class="col-md-5">
+                            <label class="q-cap">Email</label>
+                            <InputText class="form-control q-input" @bind-Value="form.Email" />
+                        </div>
+                        <div class="col-md-5">
+                            <label class="q-cap">Password</label>
+                            <InputText class="form-control q-input" type="password" @bind-Value="form.Password" />
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end gap-2">
+                            <button type="submit" class="q-btn">Save</button>
+                            <button type="button" class="q-btn" @onclick="Cancel">Cancel</button>
+                        </div>
+                    </div>
+                    @if (!string.IsNullOrEmpty(error))
+                    {
+                        <div class="q-card" style="margin-top:.75rem; padding:.6rem; border-color:#a03c3c;">
+                            <div class="q-cap" style="color:#ffdede;">@error</div>
+                        </div>
+                    }
+                    @if (!string.IsNullOrEmpty(successMessage))
+                    {
+                        <div class="q-card" style="margin-top:.75rem; padding:.6rem; border-color:#3ca05a;">
+                            <div class="q-cap" style="color:#deffde;">@successMessage</div>
+                        </div>
+                    }
+                </EditForm>
+            </div>
+        }
+
+        <div class="q-card" style="padding:0; overflow:hidden;">
+            <div class="table-responsive" style="max-height:70vh; overflow:auto;">
+                <table class="table table-hover table-sm align-middle mb-0" style="color:var(--offwhite);">
+                    <thead style="position: sticky; top: 0; z-index: 1; background: linear-gradient(180deg, rgba(62,92,230,.25), rgba(12,20,69,.9));">
+                        <tr>
+                            <th><button class="btn btn-link p-0 text-decoration-none grad-gold" @onclick="() => SortBy(nameof(Row.Name))">Name</button></th>
+                            <th><button class="btn btn-link p-0 text-decoration-none grad-gold" @onclick="() => SortBy(nameof(Row.Email))">Email</button></th>
+                            <th><button class="btn btn-link p-0 text-decoration-none grad-gold" @onclick="() => SortBy(nameof(Row.Role))">Role</button></th>
+                            <th><button class="btn btn-link p-0 text-decoration-none grad-gold" @onclick="() => SortBy(nameof(Row.CreatedAt))">Created</button></th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in ViewRows())
+                        {
+                            <tr style="border-color: rgba(62,92,230,.25);">
+                                <td class="text-nowrap">
+                                    <div class="fw-semibold grad-gold" style="letter-spacing:.01em;">@r.Name</div>
+                                    <small class="text-muted"><code>@r.Id</code></small>
+                                </td>
+                                <td>@r.Email</td>
+                                <td>
+                                    <span class="badge @(r.Role == "Admin" ? "bg-danger" : "bg-info")">
+                                        @r.Role
+                                    </span>
+                                </td>
+                                <td class="text-nowrap">@r.CreatedAt.ToLocalTime().ToString("MM/dd/yyyy")</td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="q-btn" style="padding:.35rem .6rem;" @onclick="() => BeginEdit(r.Id)">Edit</button>
+                                        <button class="q-btn" style="padding:.35rem .6rem;" @onclick="() => ConfirmDelete(r.Id)">Delete</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="q-cap" style="padding:.6rem 1rem; border-top:1px solid rgba(62,92,230,.25); display:flex; justify-content:space-between;">
+                <div>Rows: @ViewCount / @_users.Count</div>
+                <div>@(string.IsNullOrWhiteSpace(search) ? "" : $"Filter: \"{search}\"")</div>
+            </div>
+        </div>
+
+        @if (toDelete is not null)
+        {
+            <div class="q-card" style="margin-top:1rem; padding:.75rem; border-color:#b25050;">
+                <div style="display:flex; align-items:center; justify-content:space-between; gap:.75rem; flex-wrap:wrap;">
+                    <div>Delete <b>@toDelete!.FullName</b> (<code>@toDelete!.Email</code>)?</div>
+                    <div class="btn-group">
+                        <button class="q-btn" style="padding:.35rem .6rem; border-color:#b25050;" @onclick="DeleteNow">Yes, delete</button>
+                        <button class="q-btn" style="padding:.35rem .6rem; border-color:var(--electric);" @onclick="() => toDelete = null">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</section>
+
+@code {
+    // --- lifecycle/admin/auth flags ---
+    private bool _authHydrated;
+    private bool _isAdmin;
+    private bool _isLoading;
+    // --- data ---
+    private List<UserViewModel> _users = new();
+    // --- filters & view state ---
+    private string? search = "";
+    private int rowsToShow = 100;
+    private string sortColumn = nameof(Row.CreatedAt);
+    private bool sortAsc = false;
+    // --- CRUD form state ---
+    private class UserForm
+    {
+        public string? Id { get; set; }
+        public string FullName { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Password { get; set; } = "";
+    }
+    private UserForm form = new();
+    private UserViewModel? editing;
+    private UserViewModel? toDelete;
+    private bool showForm;
+    private string? error;
+    private string? successMessage;
+
+    private bool isSaving = false;
+    private bool isDeleting = false;
+
+    private sealed class Row
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Email { get; set; } = "";
+        public string Role { get; set; } = "";
+        public DateTime CreatedAt { get; set; }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_authHydrated)
+        {
+            try
+            {
+                await Auth.InitializeAsync();
+                _authHydrated = true;
+                _isAdmin = Auth.IsAdmin;
+
+                if (!_isAdmin)
+                {
+                    Nav.NavigateTo("/");
+                    return;
+                }
+
+                await LoadUsersFromBackend();
+            }
+            catch (Exception ex)
+            {
+                error = $"Authentication error: {ex.Message}";
+                Console.WriteLine($"Auth error: {ex}");
+            }
+        }
+    }
+
+    private async Task LoadUsersFromBackend()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _users = await ApiDataService.GetUsersAsync();
+            error = null;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load users from backend: {ex.Message}";
+            Console.WriteLine($"Error loading users: {ex}");
+            _users = new List<UserViewModel>();
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private int ViewCount { get; set; }
+
+    private IEnumerable<Row> ViewRows()
+    {
+        var sq = (search ?? "").Trim().ToLowerInvariant();
+
+        var query = _users
+            .Where(u => string.IsNullOrEmpty(sq)
+                        || (u.FullName?.ToLowerInvariant().Contains(sq) ?? false)
+                        || (u.Email?.ToLowerInvariant().Contains(sq) ?? false)
+                        || (u.Id?.ToLowerInvariant().Contains(sq) ?? false))
+            .Select(u => new Row
+            {
+                Id = u.Id,
+                Name = u.FullName,
+                Email = u.Email,
+                Role = u.Role,
+                CreatedAt = u.CreatedAt?.DateTime ?? DateTime.MinValue
+            });
+
+        query = sortColumn switch
+        {
+            nameof(Row.Name) => sortAsc ? query.OrderBy(r => r.Name) : query.OrderByDescending(r => r.Name),
+            nameof(Row.Email) => sortAsc ? query.OrderBy(r => r.Email) : query.OrderByDescending(r => r.Email),
+            nameof(Row.Role) => sortAsc ? query.OrderBy(r => r.Role) : query.OrderByDescending(r => r.Role),
+            nameof(Row.CreatedAt) => sortAsc ? query.OrderBy(r => r.CreatedAt) : query.OrderByDescending(r => r.CreatedAt),
+            _ => sortAsc ? query.OrderBy(r => r.CreatedAt) : query.OrderByDescending(r => r.CreatedAt)
+        };
+
+        var result = query.Take(rowsToShow).ToList();
+        ViewCount = result.Count;
+        return result;
+    }
+
+    private void SortBy(string col)
+    {
+        if (sortColumn == col) sortAsc = !sortAsc; else { sortColumn = col; sortAsc = true; }
+    }
+
+    private void ClearFilters()
+    {
+        search = "";
+        sortColumn = nameof(Row.CreatedAt);
+        sortAsc = false;
+    }
+
+    private async Task RefreshUsers()
+    {
+        await LoadUsersFromBackend();
+    }
+
+    private async Task Logout()
+    {
+        await Auth.SignOut();
+        Nav.NavigateTo("/");
+    }
+
+    private void BeginCreate()
+    {
+        editing = null;
+        form = new UserForm { Id = null, FullName = "", Email = "", Password = "" };
+        showForm = true;
+        error = null;
+        successMessage = null;
+        StateHasChanged();
+    }
+
+    private void BeginEdit(string id)
+    {
+        editing = _users.FirstOrDefault(u => u.Id == id);
+        if (editing is null) return;
+        form = new UserForm
+        {
+            Id = editing.Id,
+            FullName = editing.FullName,
+            Email = editing.Email,
+            Password = ""
+        };
+        showForm = true;
+        error = null;
+        successMessage = null;
+        StateHasChanged();
+    }
+
+    private void Cancel()
+    {
+        showForm = false;
+        editing = null;
+        error = null;
+        successMessage = null;
+        StateHasChanged();
+    }
+
+    private async Task Save()
+    {
+        isSaving = true;
+        error = null;
+        successMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            // Validate form
+            if (string.IsNullOrWhiteSpace(form.FullName))
+            {
+                error = "Full Name is required";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(form.Email))
+            {
+                error = "Email is required";
+                return;
+            }
+
+            if (!System.Net.Mail.MailAddress.TryCreate(form.Email, out _))
+            {
+                error = "Invalid email format";
+                return;
+            }
+
+            if (editing is null)
+            {
+                if (string.IsNullOrWhiteSpace(form.Password) || form.Password.Length < 6)
+                {
+                    error = "Password must be at least 6 characters";
+                    return;
+                }
+
+                var createRequest = new ApiDataService.CreateUserRequest
+                {
+                    FullName = form.FullName,
+                    Email = form.Email,
+                    Password = form.Password
+                };
+
+                var result = await ApiDataService.CreateUserAsync(createRequest);
+
+                if (result.Success)
+                {
+                    successMessage = result.Message;
+                    await LoadUsersFromBackend();
+                    showForm = false;
+                    editing = null;
+                }
+                else
+                {
+                    error = result.Message;
+                }
+            }
+            else // Updating existing user
+            {
+                var updateRequest = new ApiDataService.UpdateUserRequest
+                {
+                    FullName = form.FullName,
+                    Email = form.Email,
+                    Password = string.IsNullOrWhiteSpace(form.Password) ? null : form.Password
+                };
+
+                var result = await ApiDataService.UpdateUserAsync(editing.Id, updateRequest);
+
+                if (result.Success)
+                {
+                    successMessage = result.Message;
+                    await LoadUsersFromBackend();
+                    showForm = false;
+                    editing = null;
+                }
+                else
+                {
+                    error = result.Message;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Error saving user: {ex.Message}";
+            Console.WriteLine($"Save error: {ex}");
+        }
+        finally
+        {
+            isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ConfirmDelete(string id)
+    {
+        toDelete = _users.FirstOrDefault(u => u.Id == id);
+        StateHasChanged();
+    }
+
+    private async Task DeleteNow()
+    {
+        if (toDelete is null) return;
+
+        isDeleting = true;
+        error = null;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ApiDataService.DeleteUserAsync(toDelete.Id);
+
+            if (result.Success)
+            {
+                successMessage = result.Message;
+                toDelete = null;
+                await LoadUsersFromBackend();
+            }
+            else
+            {
+                error = result.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Error deleting user: {ex.Message}";
+            Console.WriteLine($"Delete error: {ex}");
+        }
+        finally
+        {
+            isDeleting = false;
+            StateHasChanged();
+        }
+    }
+}

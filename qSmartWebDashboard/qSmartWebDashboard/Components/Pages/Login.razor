@@ -1,0 +1,120 @@
+﻿@page "/"
+@using qSmartWebDashboard.ViewModels
+@rendermode InteractiveServer
+@inject NavigationManager Nav
+@inject qSmartWebDashboard.Services.AuthState Auth
+@inject qSmartWebDashboard.Data.ApiDataService ApiDataService
+
+<div class="login-page-bg">
+    <section class="q-card login-hero">
+        <h1 class="grad-gold login-hero-title">
+            Admin Login
+        </h1>
+        <div class="q-cap login-hero-sub">
+            Muscle Relief
+        </div>
+    </section>
+
+    <section class="q-card" style="margin:1rem auto; max-width:540px; padding:1.25rem;">
+        <div style="display:flex; flex-direction:column; gap:.9rem;">
+            <div>
+                <label class="q-cap">Email</label>
+                <input @bind="email" class="form-control q-input" placeholder="User" />
+            </div>
+
+            <div>
+                <label class="q-cap">Password</label>
+                <input @bind="password" class="form-control q-input" type="password" placeholder="Password" />
+            </div>
+
+            <button class="q-btn" style="width:100%;" @onclick="LoginAsync">
+                @(isLoggingIn ? "Signing in..." : "Sign In")
+            </button>
+
+            @if (!string.IsNullOrEmpty(error))
+            {
+                <div class="q-cap" style="color:#ffdede;">@error</div>
+            }
+        </div>
+    </section>
+</div>
+
+@code {
+    private string email = "";
+    private string password = "";
+    private string? error;
+    private bool _authHydrated;
+    private bool isLoggingIn = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_authHydrated)
+        {
+            try
+            {
+                await Auth.InitializeAsync();
+                _authHydrated = true;
+
+                if (Auth.IsAdmin)
+                {
+                    Nav.NavigateTo("/dashboard");
+                    return;
+                }
+
+                StateHasChanged();
+            }
+            catch (InvalidOperationException)
+            {
+                return;
+            }
+        }
+    }
+
+    private async Task LoginAsync()
+    {
+        error = null;
+        isLoggingIn = true;
+        StateHasChanged();
+
+        try
+        {
+            var loginData = new LoginViewModel
+            {
+                Email = email,
+                Password = password
+            };
+
+            var user = await ApiDataService.LoginAsync(loginData);
+            var actualRole = await ApiDataService.CheckUserRole(email);
+            Console.WriteLine($"DEBUG: User role from API: {actualRole}");
+
+            if (user != null)
+            {
+                if (user.Role == "Admin")
+                {
+                    await Auth.SignInAsUser(user);
+                    Nav.NavigateTo("/dashboard");
+                    return;
+                }
+                else
+                {
+                    error = $"Access denied. User has role: '{user.Role}'. Admin role required.";
+                }
+            }
+            else
+            {
+                error = "Invalid email or password.";
+            }
+        }
+        catch (Exception ex)
+        {
+            error = $"Login error: {ex.Message}";
+            Console.WriteLine($"Login error: {ex}");
+        }
+        finally
+        {
+            isLoggingIn = false;
+            StateHasChanged();
+        }
+    }
+}

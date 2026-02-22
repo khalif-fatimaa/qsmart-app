@@ -1,0 +1,291 @@
+﻿@page "/userprogress/{UserId}"
+@rendermode InteractiveServer
+@using System.Linq
+@using System.Text.Json
+@using qSmartWebDashboard.Models
+@using qSmartWebDashboard.ViewModels
+@inject qSmartWebDashboard.Data.ApiDataService ApiDataService
+@inject NavigationManager Nav
+
+<section class="q-card" style="margin:1rem 1rem 0 1rem; padding:1.25rem;">
+    <div style="display:flex; align-items:center; gap:1rem; flex-wrap:wrap;">
+        <img src="images/qsmart-logo.png"
+             alt="QSMART"
+             style="height:56px; max-width:260px; width:auto; display:block; filter:drop-shadow(0 3px 8px rgba(0,0,0,.5));" />
+
+        <div style="min-width:220px">
+            <h1 class="grad-gold" style="margin:.1rem 0 .15rem 0; font-size:1.85rem; font-weight:800; letter-spacing:.02em;">
+                User Progress
+            </h1>
+            <p class="q-cap" style="margin:0; opacity:.9;">
+                Deep dive into an athlete’s recovery sessions and sensor readings.
+            </p>
+        </div>
+        <div style="margin-left:auto; display:flex; gap:.5rem; flex-wrap:wrap;">
+            <button class="q-btn q-btn-ghost" @onclick="GoDashboard">← Back to Dashboard</button>
+            <button class="q-btn q-btn-ghost" @onclick="GoUsers">← Back to User Management</button>
+            <button class="q-btn q-btn-primary" @onclick="ExportPdf">
+                Export PDF Report
+            </button>
+        </div>
+    </div>
+</section>
+
+@if (_isLoading)
+{
+    <section class="q-card" style="margin:1rem;">
+        <div class="q-loading">
+            <div class="spinner"></div>
+            <span class="q-cap">Loading user progress…</span>
+        </div>
+    </section>
+}
+else if (_hasError)
+{
+    <section class="q-card q-error" style="margin:1rem;">
+        <h3 style="margin-top:0;">Something went wrong</h3>
+        <p>@_errorMessage</p>
+    </section>
+}
+else if (_user == null)
+{
+    <section class="q-card" style="margin:1rem;">
+        <span class="q-cap">User not found.</span>
+    </section>
+}
+else
+{
+    <section class="q-card" style="margin:1rem;">
+        <header style="display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
+            <div>
+                <h2 style="margin:0 0 .25rem 0;">@_user.FullName</h2>
+                <p class="q-cap" style="margin:0;">
+                    @_user.Email · Role: @_user.Role
+                </p>
+            </div>
+            <div style="text-align:right;">
+                <p class="q-cap" style="margin:0;">Total Sessions: @_sessions.Count</p>
+                <p class="q-cap" style="margin:0;">Total Readings: @_totalReadings</p>
+            </div>
+        </header>
+    </section>
+
+    <section style="margin:0 1rem 1rem 1rem;">
+        @if (_sessions == null || !_sessions.Any())
+        {
+            <div class="q-card" style="padding:1rem;"><span class="q-cap">No sessions found for @_user.FullName.</span></div>
+        }
+        else
+        {
+            <h4>@_user.FullName (@_user.Email)</h4>
+
+            @foreach (var session in _sessions)
+            {
+                <div class="q-card" style="margin-bottom:1rem; padding:0; overflow:hidden;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding:.75rem 1rem; background:rgba(255,255,255,.02); border-bottom:1px solid rgba(255,255,255,.05);">
+                        <div>
+                            <div class="q-cap" style="opacity:.85;">Session @session.SessionId</div>
+                            <div style="font-size:.9rem; opacity:.9;">
+                                Started: @session.StartedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div class="q-chip">
+                                Tension: @session.TensionScore
+                            </div>
+                            <div class="q-cap" style="margin-top:.15rem;">
+                                HR: @session.HeartRateBpm · Angle: @session.PostureAngleDegree
+                            </div>
+                            <a class="q-btn"
+                               style="margin-top:.4rem; font-size:.8rem; padding:.3rem .7rem;"
+                               href="@($"http://localhost:5111/api/report/userprogress/{UserId}?sessionId={session.SessionId}")"
+                               target="_blank">
+                                Export Session (PDF)
+                            </a>
+
+                        </div>
+                    </div>
+
+                    <div style="padding:1rem; overflow-x:auto;">
+                        @if (_readingsForSession.TryGetValue(session.SessionId, out var readings) && readings.Any())
+                        {
+                            <table class="table table-hover table-sm align-middle mb-0" style="color:var(--offwhite);">
+                                <thead style="position: sticky; top: 0; z-index: 1; background: linear-gradient(180deg, rgba(62,92,230,.25), rgba(12,20,69,.9));">
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Region</th>
+                                        <th>Activity</th>
+                                        <th>Tension Score</th>
+                                        <th>Heart Rate</th>
+                                        <th>Posture Angle</th>
+                                        <th>Recovery Score</th>
+                                        <th>Stress Index</th>
+                                        <th>Skin Temp</th>
+                                        <th>GSR</th>
+                                        <th>Respiration</th>
+                                        <th>SpO2</th>
+                                        <th>EMG</th>
+                                        <th>Accel</th>
+                                        <th>Gyro</th>
+                                        <th>Pressure</th>
+                                        <th>Ambient Temp</th>
+                                        <th>Humidity</th>
+                                        <th>Noise</th>
+                                        <th>Cumulative Load</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var r in _readingsForSession[session.SessionId])
+                                    {
+                                        <tr style="border-color: rgba(62,92,230,.25);">
+                                            <td>@(r.CreatedAt?.ToLocalTime().ToString("yyyy-MM-dd HH:mm") ?? "-")</td>
+                                            <td>@r.Region</td>
+                                            <td>@r.ActivityLabel</td>
+                                            <td>@(r.TensionScore?.ToString("0.0") ?? "-")</td>
+                                            <td>@(r.HeartRateBpm?.ToString("0.0") ?? "-")</td>
+                                            <td>@(r.PostureAngleDegree?.ToString("0.0") ?? "-")</td>
+                                            <td>@(r.RecoveryScore?.ToString("0.0") ?? "-")</td>
+                                            <td>@(r.StressIndex?.ToString("0.0") ?? "-")</td>
+                                            <td>@(r.SkinTempC?.ToString("0.0") ?? "-")</td>
+                                            <td>@(r.GsrUs?.ToString("0.0") ?? "-")</td>
+                                            <td>@(r.RespirationBpm?.ToString("0.0") ?? "-")</td>
+                                            <td>@(r.Spo2Pct?.ToString("0.0") ?? "-")</td>
+                                            <td>@(r.EmgUv?.ToString("0.0") ?? "-")</td>
+                                            <td>@r.AccelXyz</td>
+                                            <td>@r.GyroDps</td>
+                                            <td>@(r.PressureKpa?.ToString("0.0") ?? "-")</td>
+                                            <td>@(r.AmbientTempC?.ToString("0.0") ?? "-")</td>
+                                            <td>@(r.HumidityPct?.ToString("0.0") ?? "-")</td>
+                                            <td>@(r.NoiseDb?.ToString("0.0") ?? "-")</td>
+                                            <td>@(r.CumulativeTensionLoad?.ToString("0.0") ?? "-")</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                        else
+                        {
+                            <span class="q-cap">No readings found for this session.</span>
+                        }
+                    </div>
+                </div>
+            }
+        }
+    </section>
+}
+
+@code {
+    [Parameter] public string UserId { get; set; } = string.Empty;
+
+    private bool _isLoading = true;
+    private bool _hasError = false;
+    private string _errorMessage = string.Empty;
+    private UserViewModel? _user;
+    private List<Session> _sessions = new();
+    private Dictionary<string, List<Reading>> _readingsForSession = new();
+    private int _totalReadings = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Console.WriteLine("=== UserProgress.OnInitializedAsync ===");
+        Console.WriteLine($"UserId parameter: {UserId}");
+        await LoadUserProgress();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        Console.WriteLine("=== UserProgress.OnParametersSetAsync ===");
+        await LoadUserProgress();
+    }
+
+    private async Task LoadUserProgress()
+    {
+        _isLoading = true;
+        _hasError = false;
+        _errorMessage = string.Empty;
+
+        try
+        {
+            _sessions.Clear();
+            _readingsForSession.Clear();
+            _totalReadings = 0;
+
+            var users = await ApiDataService.GetUsersAsync();
+
+            if (users == null)
+            {
+                _hasError = true;
+                _errorMessage = "Failed to load users. API returned null.";
+                return;
+            }
+
+            _user = users.FirstOrDefault(u => u.Id == UserId);
+
+            if (_user == null)
+            {
+                _hasError = true;
+                _errorMessage = $"User with ID {UserId} not found.";
+                return;
+            }
+
+            _sessions = await ApiDataService.GetSessionsByUserAsync(_user.Id);
+
+            if (_sessions == null)
+            {
+                _hasError = true;
+                _errorMessage = "Failed to load sessions. API returned null.";
+                return;
+            }
+
+            if (!_sessions.Any())
+            {
+                return;
+            }
+
+            foreach (var session in _sessions)
+            {
+                try
+                {
+                    var readings = await ApiDataService.GetReadingsBySessionAsync(session.SessionId);
+
+                    if (readings != null)
+                    {
+                        _readingsForSession[session.SessionId] = readings;
+                        _totalReadings += readings.Count;
+                    }
+                    else
+                    {
+                        _readingsForSession[session.SessionId] = new List<Reading>();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error fetching readings for session {session.SessionId}: {ex.Message}");
+                    _readingsForSession[session.SessionId] = new List<Reading>();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _hasError = true;
+            _errorMessage = $"Error loading data: {ex.Message}";
+            Console.WriteLine($"Error in LoadUserProgress: {ex.Message}");
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void GoDashboard() => Nav.NavigateTo("/dashboard");
+    private void GoUsers() => Nav.NavigateTo("/UserManagement");
+
+    private void ExportPdf()
+    {
+        var backendBaseUrl = "http://localhost:5111";
+        var url = $"{backendBaseUrl}/api/report/userprogress/{UserId}";
+        Nav.NavigateTo(url, forceLoad: true);
+    }
+
+}
